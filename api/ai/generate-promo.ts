@@ -1,5 +1,13 @@
 import { GoogleGenAI } from '@google/genai';
 
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '4.5mb',
+    },
+  },
+};
+
 export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -45,22 +53,10 @@ export default async function handler(req: any, res: any) {
     for (let i = 0; i < selectedPhotos.length; i++) {
       const photo = selectedPhotos[i];
       if (photo && typeof photo.dataUrl === 'string') {
-        if (photo.dataUrl.length > 8 * 1024 * 1024) {
-          return res.status(400).json({
-            error: `Foto ke-${i + 1} berukuran terlalu besar (maksimal 6MB per foto untuk AI).`,
-          });
-        }
-
         const match = photo.dataUrl.match(/^data:([^;]+);base64,(.+)$/);
         if (match) {
           const mimeType = match[1] || 'image/jpeg';
           const base64Data = match[2];
-
-          if (!/^image\/(jpeg|png|webp|gif|heic)$/i.test(mimeType)) {
-            return res.status(400).json({
-              error: `Format gambar ${mimeType} tidak didukung oleh AI. Gunakan JPG, PNG, atau WebP.`,
-            });
-          }
 
           parts.push({
             inlineData: {
