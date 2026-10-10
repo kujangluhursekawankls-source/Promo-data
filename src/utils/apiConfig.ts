@@ -1,6 +1,6 @@
 /**
  * Konfigurasi URL API untuk Produksi dan Pengembangan
- * Menangani URL relatif (full-stack) maupun backend eksternal (VITE_API_BASE_URL).
+ * Menangani URL relatif (full-stack / Vercel serverless) maupun backend eksternal.
  * Mencegah duplikasi path '/api' dan menjamin protokol HTTPS pada produksi.
  */
 
@@ -14,11 +14,13 @@ export function getApiBaseUrl(): string {
 
   let sanitized = envUrl.replace(/\/+$/, '');
 
-  // Peringatan pengembang jika mendeteksi localhost saat di environment produksi
-  if (import.meta.env.PROD && (sanitized.includes('localhost') || sanitized.includes('127.0.0.1'))) {
-    console.warn(
-      '[FotoPromosi] PERINGATAN: VITE_API_BASE_URL mengarah ke localhost di lingkungan produksi! Beralih menggunakan origin saat ini.'
-    );
+  // Jika mengarah ke AI Studio dev/pre URL atau localhost, abaikan dan gunakan origin Vercel/server saat ini
+  if (
+    sanitized.includes('ais-dev') ||
+    sanitized.includes('ais-pre') ||
+    sanitized.includes('localhost') ||
+    sanitized.includes('127.0.0.1')
+  ) {
     return '';
   }
 
