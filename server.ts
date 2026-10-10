@@ -239,19 +239,40 @@ ATURAN MUTLAK KEBENARAN (JANGAN MENGARANG):
         },
       });
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
-        contents: {
-          parts,
-        },
-        config: {
-          systemInstruction,
-          temperature: 0.7,
-        },
-      });
+      // Daftar model Gemini yang dicoba berurutan untuk redundansi kuota dan kehandalan
+      // gemini-3.1-flash-lite: Model responsif cepat dengan kuota terpisah
+      // gemini-3.8-flash: Model teks & multimodal unggulan
+      const candidateModels = ['gemini-3.1-flash-lite', 'gemini-3.8-flash'];
+      let generatedText = '';
+      let lastCaughtError: unknown = null;
 
-      const generatedText = response.text;
-      if (!generatedText || !generatedText.trim()) {
+      for (const modelName of candidateModels) {
+        try {
+          const response = await ai.models.generateContent({
+            model: modelName,
+            contents: {
+              parts,
+            },
+            config: {
+              systemInstruction,
+              temperature: 0.7,
+            },
+          });
+
+          if (response.text && response.text.trim()) {
+            generatedText = response.text.trim();
+            break;
+          }
+        } catch (modelErr) {
+          lastCaughtError = modelErr;
+          console.warn(`Model ${modelName} gagal dipanggil, mencoba model cadangan:`, modelErr);
+        }
+      }
+
+      if (!generatedText) {
+        if (lastCaughtError) {
+          throw lastCaughtError;
+        }
         res.status(502).json({
           error:
             'AI tidak menghasilkan teks promosi. Silakan coba lagi dengan foto atau keterangan yang lebih jelas.',
@@ -261,7 +282,7 @@ ATURAN MUTLAK KEBENARAN (JANGAN MENGARANG):
 
       res.json({
         success: true,
-        generatedText: generatedText.trim(),
+        generatedText,
       });
     } catch (error: unknown) {
       console.error('Error saat menghasilkan kata promosi AI:', error);
@@ -270,7 +291,9 @@ ATURAN MUTLAK KEBENARAN (JANGAN MENGARANG):
       let errorMessage = 'Terjadi kesalahan pada server saat memproses permintaan AI.';
 
       if (error instanceof Error) {
-        const msg = error.message.toLowerCase();
+        const rawMsg = error.message;
+        const msg = rawMsg.toLowerCase();
+
         if (
           msg.includes('api key') ||
           msg.includes('unauthorized') ||
@@ -282,13 +305,22 @@ ATURAN MUTLAK KEBENARAN (JANGAN MENGARANG):
             'API Key Gemini tidak valid atau izin ditolak. Periksa kembali GEMINI_API_KEY di Settings > Secrets.';
         } else if (
           msg.includes('quota') ||
-          msg.includes('429') ||
+          msg.includes('resource_exhausted') ||
           msg.includes('rate limit') ||
-          msg.includes('resource_exhausted')
+          msg.includes('429')
         ) {
           statusCode = 429;
           errorMessage =
-            'Batas kuota Gemini tercapai. Silakan tunggu beberapa saat sebelum mencoba lagi.';
+            'Batas kuota harian Gemini saat ini sedang penuh. Silakan tunggu beberapa saat atau hubungi administrator untuk meningkatkan batas kuota.';
+        } else if (
+          msg.includes('503') ||
+          msg.includes('high demand') ||
+          msg.includes('unavailable') ||
+          msg.includes('overloaded')
+        ) {
+          statusCode = 503;
+          errorMessage =
+            'Server AI Gemini sedang mengalami lonjakan trafik tinggi (503). Silakan coba kirim ulang dalam 5–10 detik.';
         } else if (msg.includes('timeout') || msg.includes('deadline')) {
           statusCode = 504;
           errorMessage = 'Permintaan AI melebihi batas waktu (timeout). Silakan coba lagi.';
@@ -296,7 +328,18 @@ ATURAN MUTLAK KEBENARAN (JANGAN MENGARANG):
           statusCode = 502;
           errorMessage = 'Gagal menghubungi server Gemini. Pastikan koneksi internet server stabil.';
         } else {
-          errorMessage = `Gagal memproses AI: ${error.message}`;
+          // Bersihkan jika pesan error berupa JSON string mentah
+          try {
+            const parsed = JSON.parse(rawMsg);
+            const nestedMsg = parsed?.error?.message || parsed?.message;
+            if (nestedMsg) {
+              errorMessage = `Kendala AI: ${nestedMsg}`;
+            } else {
+              errorMessage = 'Terjadi kesalahan saat memproses permintaan ke model AI.';
+            }
+          } catch {
+            errorMessage = `Gagal memproses AI: ${rawMsg}`;
+          }
         }
       }
 

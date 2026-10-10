@@ -1,5 +1,5 @@
 import { PhotoItem } from '../types';
-import { blobToDataURL } from './fileUtils';
+import { blobToDataURL, dataURLToBlob } from './fileUtils';
 import { buildApiUrl } from './apiConfig';
 
 export type AIPromoStyle = 'singkat' | 'santai' | 'profesional' | 'marketplace';
@@ -13,45 +13,66 @@ export interface GenerateAIPromoOptions {
 /**
  * Mengoptimalkan ukuran foto sebelum dikirim ke AI.
  * Foto kamera HP (5MB+) diperkecil ke resolusi max 800px (~150KB),
- * sehingga cepat diupload via jaringan seluler dan tidak melampaui batas payload Vercel (4.5MB).
+ * sehingga cepat diupload via jaringan seluler dan tidak melampaui batas payload server (25MB) / Vercel (4.5MB).
  */
 function optimizePhotoForAI(blob: Blob): Promise<string> {
   return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const maxDim = 800;
-        let width = img.width;
-        let height = img.height;
+    try {
+      if (!blob || !(blob instanceof Blob)) {
+        resolve('');
+        return;
+      }
 
-        if (width > maxDim || height > maxDim) {
-          if (width > height) {
-            height = Math.round((height * maxDim) / width);
-            width = maxDim;
-          } else {
-            width = Math.round((width * maxDim) / height);
-            height = maxDim;
+      const reader = new FileReader();
+      const timeout = setTimeout(() => {
+        // Fallback jika pembacaan gambar melebihi 6 detik
+        blobToDataURL(blob).then(resolve).catch(() => resolve(''));
+      }, 6000);
+
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          clearTimeout(timeout);
+          const maxDim = 800;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
           }
-        }
 
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL('image/jpeg', 0.75));
-          return;
-        }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', 0.75));
+            return;
+          }
 
+          blobToDataURL(blob).then(resolve).catch(() => resolve(''));
+        };
+        img.onerror = () => {
+          clearTimeout(timeout);
+          blobToDataURL(blob).then(resolve).catch(() => resolve(''));
+        };
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = () => {
+        clearTimeout(timeout);
         blobToDataURL(blob).then(resolve).catch(() => resolve(''));
       };
-      img.onerror = () => blobToDataURL(blob).then(resolve).catch(() => resolve(''));
-      img.src = e.target?.result as string;
-    };
-    reader.onerror = () => blobToDataURL(blob).then(resolve).catch(() => resolve(''));
-    reader.readAsDataURL(blob);
+      reader.readAsDataURL(blob);
+    } catch {
+      resolve('');
+    }
   });
 }
 
@@ -68,20 +89,29 @@ export async function generateAIPromotion({
   }
 
   // Siapkan data foto yang dioptimasi (maksimal 3 foto untuk performa optimal)
-  const selectedPhotos = photos.slice(0, 3);
+  const selectedPhotos = (photos || []).slice(0, 3);
   const serializedPhotos: Array<{ dataUrl: string; mimeType: string }> = [];
 
   for (const photo of selectedPhotos) {
     try {
-      const optimizedDataUrl = await optimizePhotoForAI(photo.blob);
-      if (optimizedDataUrl) {
-        serializedPhotos.push({
-          dataUrl: optimizedDataUrl,
-          mimeType: 'image/jpeg',
-        });
+      let blobToOptimize: Blob | null = null;
+      if (photo?.blob instanceof Blob) {
+        blobToOptimize = photo.blob;
+      } else if ((photo as any)?.dataUrl && typeof (photo as any).dataUrl === 'string') {
+        blobToOptimize = dataURLToBlob((photo as any).dataUrl);
+      }
+
+      if (blobToOptimize) {
+        const optimizedDataUrl = await optimizePhotoForAI(blobToOptimize);
+        if (optimizedDataUrl) {
+          serializedPhotos.push({
+            dataUrl: optimizedDataUrl,
+            mimeType: 'image/jpeg',
+          });
+        }
       }
     } catch (err) {
-      console.warn('Gagal membaca blob foto untuk AI:', err);
+      console.warn('Gagal memproses foto produk untuk AI:', err);
     }
   }
 
