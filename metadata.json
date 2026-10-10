@@ -1,0 +1,8 @@
+{
+  "name": "FotoPromosi",
+  "description": "Aplikasi simpel untuk menyimpan, mengelola, dan membagikan foto produk serta kata-kata promosi secara offline di perangkat Anda.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

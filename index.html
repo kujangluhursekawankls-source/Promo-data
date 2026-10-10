@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>FotoPromosi - Simpan Foto Produk & Teks Promosi</title>
+    <meta name="description" content="Aplikasi simpel untuk menyimpan, mengelola, dan membagikan foto produk serta kata-kata promosi secara offline di perangkat Anda." />
+    <meta name="theme-color" content="#059669" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="FotoPromosi" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    
+    <meta property="og:title" content="FotoPromosi - Simpan Foto Produk & Teks Promosi" />
+    <meta property="og:description" content="Aplikasi simpel untuk menyimpan, mengelola, dan membagikan foto produk serta kata-kata promosi secara offline di perangkat Anda." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/pwa-512x512.png" />
+    <meta name="twitter:card" content="summary" />
+
+    <script>
+      // Shim WebSocket untuk Vite HMR di lingkungan preview iframe AI Studio agar tidak terjadi galat koneksi
+      (function () {
+        if (typeof window === 'undefined') return;
+        const NativeWebSocket = window.WebSocket;
+        if (!NativeWebSocket) return;
+
+        class ViteHmrShim extends EventTarget {
+          constructor(url, protocols) {
+            super();
+            this.url = url;
+            this.protocols = protocols;
+            this.readyState = 1; // WebSocket.OPEN
+            setTimeout(() => {
+              this.dispatchEvent(new Event('open'));
+            }, 10);
+          }
+          send() {}
+          close() {
+            this.readyState = 3; // WebSocket.CLOSED
+          }
+        }
+
+        function PatchedWebSocket(url, protocols) {
+          const isHmr =
+            protocols === 'vite-hmr' ||
+            protocols === 'vite-ping' ||
+            (typeof url === 'string' && (url.includes('token=') || url.includes('24678')));
+          if (isHmr) {
+            return new ViteHmrShim(url, protocols);
+          }
+          return new NativeWebSocket(url, protocols);
+        }
+
+        PatchedWebSocket.prototype = NativeWebSocket.prototype;
+        PatchedWebSocket.CONNECTING = NativeWebSocket.CONNECTING;
+        PatchedWebSocket.OPEN = NativeWebSocket.OPEN;
+        PatchedWebSocket.CLOSING = NativeWebSocket.CLOSING;
+        PatchedWebSocket.CLOSED = NativeWebSocket.CLOSED;
+
+        window.WebSocket = PatchedWebSocket;
+
+        window.addEventListener('error', function (e) {
+          if (e.message && e.message.toLowerCase().includes('websocket')) {
+            e.stopImmediatePropagation();
+            e.preventDefault();
+          }
+        });
+        window.addEventListener('unhandledrejection', function (e) {
+          if (e.reason && String(e.reason).toLowerCase().includes('websocket')) {
+            e.stopImmediatePropagation();
+            e.preventDefault();
+          }
+        });
+      })();
+    </script>
+  </head>
+  <body class="bg-slate-100 text-slate-800 antialiased selection:bg-emerald-200 select-none">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

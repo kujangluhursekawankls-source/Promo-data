@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#059669" />
+      <stop offset="100%" stop-color="#047857" />
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#d97706" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-opacity="0.25" />
+    </filter>
+  </defs>
+
+  <!-- Background Rounded Rect -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)" />
+
+  <!-- Inner Camera Body -->
+  <g filter="url(#shadow)">
+    <rect x="96" y="160" width="320" height="230" rx="44" fill="#ffffff" />
+    <!-- Camera bump on top -->
+    <path d="M180 160 L210 120 L302 120 L332 160 Z" fill="#e2e8f0" />
+    <circle cx="256" cy="138" r="12" fill="#cbd5e1" />
+
+    <!-- Camera Lens Outer -->
+    <circle cx="256" cy="275" r="76" fill="#0f172a" />
+    <!-- Lens Reflection & Ring -->
+    <circle cx="256" cy="275" r="62" fill="#1e293b" />
+    <circle cx="256" cy="275" r="44" fill="#059669" />
+    <circle cx="240" cy="255" r="12" fill="#ffffff" opacity="0.6" />
+
+    <!-- Flash / Sensor -->
+    <circle cx="360" cy="200" r="14" fill="#f59e0b" />
+
+    <!-- Promo Badge in Bottom Right -->
+    <circle cx="370" cy="350" r="48" fill="url(#accentGrad)" stroke="#ffffff" stroke-width="6" />
+    <!-- Tag icon in badge -->
+    <path d="M358 338 L374 338 L386 350 L374 362 L358 362 Z" fill="#ffffff" />
+    <circle cx="366" cy="350" r="3" fill="#d97706" />
+  </g>
+</svg>
