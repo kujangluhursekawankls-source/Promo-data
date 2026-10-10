@@ -1,5 +1,6 @@
 import React from 'react';
 import { Camera, Search, X, DatabaseBackup, Download, WifiOff } from 'lucide-react';
+import { ConnectionStatus } from './ConnectionStatus';
 
 interface Props {
   searchQuery: string;
@@ -49,6 +50,8 @@ export const Header: React.FC<Props> = ({
             </div>
 
             <div className="flex items-center gap-1.5">
+              <ConnectionStatus />
+
               <button
                 type="button"
                 onClick={() => setShowSearch(true)}
